@@ -1,0 +1,58 @@
+#include<xc.h>
+#define _XTAL_FREQ 6000000 //6mhz 
+void uart_init();
+unsigned char rx_rec;
+void main(){
+    TRISB = 0xF0; //RB4-RB7 as input
+    TRISD = 0x00;
+    PORTB = 0x00;
+    PORTD = 0x00;
+	uart_init(); //initialization
+	while(1){
+        //rx_rec = PORTD;
+        if(RB4 ==0){ //active low
+            while(!TXIF); // Wait until the USART Transmit Register is empty
+            TXREG = 'A'; // Load the transmit register with character 'A'
+            PORTD = 0x02; //making the RD1 pin high for glow of led
+            while(RB4==0); 
+            __delay_ms(200);
+            PORTD = 0x00;
+        }
+        else if(RB5 == 0){ //active low
+             while(!TXIF);// Wait until the USART Transmit Register is empty
+            TXREG = 'B'; //Load the transmit register with character 'B'
+            PORTD = 0x40;// making the RD6 pin high for glow of led
+             while(RB5==0);
+            __delay_ms(200);
+            PORTD = 0x00;
+        }
+        else if(RB6 == 0){ //active low
+             while(!TXIF); // Wait until the USART Transmit Register is empty
+            TXREG = 'C'; // Load the transmit register with character 'C'
+            PORTD = 0x00; //making the RD1 and RD6 pin as low 
+             while(RB6==0);
+            __delay_ms(200);
+            PORTD = 0x00;
+        }
+        else if(RB7 == 0){ //active low
+             while(!TXIF);// Wait until the USART Transmit Register is empty
+            TXREG = 'D'; //Load the transmit register with character 'D'
+            PORTD = 0x42;// making the RD1 and RD6 pins high for glow of led
+             while(RB7==0);
+            __delay_ms(200);
+            PORTD = 0x00;
+        }
+    }
+} 
+void uart_init();
+void uart_init(){
+    //configure switch pins RB4 to RB7
+    TRISB = 0xF0; //making RB4 TO RB7 as INPUT in PORTB
+    PORTB = 0x00; //making all the pins as low
+    OPTION_REG &= 0x7F; //clear BIT(7) and leave others as unaffected
+    //UART configuration
+    TRISC = 0xC0; //1100 0000 RC6(TX)=1, RC7(RX)=>1
+    TXSTA = 0x20; //0010 0000 transmitter enabled and async mode enabled
+    SPBRG = 0X09; //00001001 setting baud rate for comm
+    RCSTA = 0x90; // sets up the Receiver Status and Control Register
+}
