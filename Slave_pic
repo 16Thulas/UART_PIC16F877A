@@ -1,0 +1,107 @@
+#include <xc.h>
+#define _XTAL_FREQ 6000000 //6mhz 
+void uart_init();
+void lcd_init(); //initialization
+void lcd_command(unsigned char i);
+void lcd_data(unsigned char i);
+void lcd_set_cursor(unsigned char row, unsigned char col);
+void lcd_clear();
+void lcd_string(const char *str); //for string declaration
+unsigned char rx_char,tx_char,i=0;
+char tx_data[] = {'a','b','c','d'};
+void main(){
+    //pin configuration
+    uart_init();
+    lcd_init();
+    while(1){
+        while (!TXIF);
+        TXREG = tx_data[i]; //data from transmitted value
+        i=(i+1)%4;
+       __delay_ms(100);
+        if(PIR1 & 0x20){
+            rx_char = RCREG;
+            //check and respond only to 'A' to 'D'
+            if(rx_char >= 'A' && rx_char <= 'D'){
+                //generate lowercase response
+                tx_char = rx_char + 32; // changing to 'A' to 'a'
+                while(!TXIF) //wait for transmit to complete
+                //sends to master
+                TXREG = tx_char;
+                 //update lcd
+                    lcd_clear();
+                lcd_set_cursor(1,1);//setting cursor in 1st line and 1st col
+                lcd_string("RX data: CHAR ");
+                lcd_data(rx_char);//received data
+                lcd_data('\'');
+                
+                lcd_set_cursor(2, 1);//setting cursor in 2nd line and 2nd col
+                lcd_string("TX data: CHAR ");
+                lcd_data(tx_char); //transmitted data
+                lcd_data('\'');
+                __delay_ms(300);
+            }
+        }
+    }
+}
+void uart_init(){
+    //adc_lcd_init();
+    //configure switch pins RB4 TO RB7
+    TRISD = 0x00;
+    PORTD = 0X00;
+    //UART configuration
+    TRISC = 0xC0; //1100 0000 RC6(TX)=1, RC7(RX)=>1
+    TXSTA = 0x20;  //0010 0000 transmitter enabled and async mode enabled
+    SPBRG = 0X09; //0000 1001 setting baud rate for comm
+    RCSTA = 0x90; // sets up the Receiver Status and Control Register
+}
+void lcd_init(){
+	// lcd init
+	//TRISC = 0x00; //all pins are op
+    TRISB &= 0xF6; //RB0(EN) and RB3 as ouptut
+	TRISD = 0x00;  
+	PORTD = 0x00;
+	PORTB &= 0xF6; //RB3 and RB0 as low
+	lcd_command(0x30);
+	__delay_ms(100);
+	lcd_command(0x30);
+	__delay_ms(100);
+	lcd_command(0x30);
+	__delay_ms(100);
+	lcd_command(0x38);
+	__delay_ms(100);
+	lcd_command(0x06);
+	__delay_ms(100);
+	lcd_command(0x0C);
+	__delay_ms(100);
+	lcd_command(0x01);
+	__delay_ms(100);
+}
+void lcd_command(unsigned char i){
+	PORTB &= 0xF7; //RS=>RB3 //
+	PORTD=i;
+	PORTB |= 0x01;  //RB0 =1
+	PORTB &= 0xFE;  //RC0=0
+	__delay_ms(100);
+}
+void lcd_data(unsigned char i){
+	PORTB |= 0x08; //RS->RC3->1
+	PORTD=i;
+	PORTB |= 0x01;  //RC0 =1
+	PORTB &= 0xFE; //~0x01;  //RC0=0
+	__delay_ms(100);
+}
+void lcd_string(const char*str){
+    while(*str){
+        lcd_data(*str++);//incrementation of string
+    }
+}
+void lcd_clear(){
+    lcd_command(0x01);
+    __delay_ms(100);
+}
+void lcd_set_cursor(unsigned char row, unsigned char col) {
+   //  For Row 1, Column 1 ? 0x80 + 0 ? 0x8
+    //For Row 2, Column 1 ? 0xC0 + 0 ? 0xC0
+    unsigned char address = (row == 1) ? (0x80 + (col - 1)) : (0xC0 + (col - 1));
+    lcd_command(address);
+}
